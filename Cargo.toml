@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bootloader = "0.9.8"
+bootloader = { version = "0.9.8", features = ["map_physical_memory"]}
 volatile = "0.2.6"
 lazy_static = { version = "1.0", features = ["spin_no_std"] }
 spin = "0.5.2"
@@ -12,6 +12,20 @@ x86_64 = "0.14.2"
 uart_16550 = "0.2.0"
 pic8259 = "0.10.1"
 pc-keyboard = "0.5.0"
+
+[dependencies.crossbeam-queue]
+version = "0.2.1"
+default-features = false
+features = ["alloc"]
+
+[dependencies.conquer-once]
+version = "0.2.0"
+default-features = false
+
+[dependencies.futures-util]
+version = "0.3.4"
+default-features = false
+features = ["alloc"]
 
 [package.metadata.bootimage]
 test-args = ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio"]

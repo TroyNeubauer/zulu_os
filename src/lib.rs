@@ -1,19 +1,27 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
 #![feature(custom_test_frameworks)]
+#![feature(alloc_error_handler)]
 #![feature(abi_x86_interrupt)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![deny(unsafe_op_in_unsafe_fn)]
+
+extern crate alloc;
 
 use core::panic::PanicInfo;
+use bootloader::BootInfo;
 
+pub mod allocator;
 pub mod interrupts;
 pub mod serial;
 pub mod vga_buffer;
 pub mod gdt;
 pub mod sys;
+pub mod memory;
+pub mod task;
 
-pub fn init() {
+pub fn init(_boot_info: &'static BootInfo) {
     gdt::init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
@@ -66,11 +74,12 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
     }
 }
 
-/// Entry point for `cargo xtest`
 #[cfg(test)]
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
-    init();
+bootloader::entry_point!(kernel_main_test);
+
+#[cfg(test)]
+fn kernel_main_test(boot_info: &'static BootInfo) -> ! {
+    init(boot_info);
     test_main();
     crate::sys::hlt_loop();
 }
@@ -79,4 +88,9 @@ pub extern "C" fn _start() -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     test_panic_handler(info)
+}
+
+#[alloc_error_handler]
+fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
+    panic!("allocation error: {:?}", layout)
 }
