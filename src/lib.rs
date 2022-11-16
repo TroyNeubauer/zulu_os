@@ -9,17 +9,17 @@
 
 extern crate alloc;
 
-use core::panic::PanicInfo;
 use bootloader::BootInfo;
+use core::panic::PanicInfo;
 
 pub mod allocator;
-pub mod interrupts;
-pub mod serial;
-pub mod vga_buffer;
 pub mod gdt;
-pub mod sys;
+pub mod interrupts;
 pub mod memory;
+pub mod serial;
+pub mod sys;
 pub mod task;
+pub mod vga_buffer;
 
 pub fn init(_boot_info: &'static BootInfo) {
     gdt::init();
@@ -55,7 +55,6 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
     serial_println!("Error: {}\n", info);
     exit_qemu(QemuExitCode::Failed);
-    crate::sys::hlt_loop();
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,13 +64,14 @@ pub enum QemuExitCode {
     Failed = 0x11,
 }
 
-pub fn exit_qemu(exit_code: QemuExitCode) {
+pub fn exit_qemu(exit_code: QemuExitCode) -> ! {
     use x86_64::instructions::port::Port;
 
     unsafe {
         let mut port = Port::new(0xf4);
         port.write(exit_code as u32);
     }
+    crate::sys::hlt_loop();
 }
 
 #[cfg(test)]
