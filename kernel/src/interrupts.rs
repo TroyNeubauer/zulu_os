@@ -1,4 +1,4 @@
-use crate::{print, println};
+use crate::println;
 use pic8259::ChainedPics;
 
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
@@ -36,6 +36,7 @@ extern "x86-interrupt" fn double_fault_handler(frame: InterruptStackFrame, code:
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_frame: InterruptStackFrame) {
+    println!("time");
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8())
@@ -70,10 +71,4 @@ impl InterruptIndex {
     fn as_usize(self) -> usize {
         usize::from(self.as_u8())
     }
-}
-
-#[test_case]
-fn test_breakpoint_exception() {
-    // invoke a breakpoint exception
-    x86_64::instructions::interrupts::int3();
 }

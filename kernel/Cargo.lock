@@ -158,13 +158,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "userspace_test"
-version = "0.1.0"
-dependencies = [
- "x86_64",
-]
-
-[[package]]
 name = "volatile"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
