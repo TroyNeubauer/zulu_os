@@ -4,6 +4,7 @@
 use core::panic::PanicInfo;
 
 fn _start() -> ! {
+    x86_64::instructions::interrupts::int3();
     panic!();
 }
 

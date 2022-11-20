@@ -1,0 +1,5 @@
+
+pub struct Process {
+    // registers: ???,
+
+}

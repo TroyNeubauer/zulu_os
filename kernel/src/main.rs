@@ -17,6 +17,8 @@ use zulu_os::memory::BootInfoFrameAllocator;
 
 bootloader::entry_point!(kernel_main);
 
+const CHILD_PROCESS: &'static [u8] = include_bytes!("../processes/userspace_test").as_slice();
+
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
     zulu_os::init(boot_info);
 
@@ -31,9 +33,14 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
+    /*
     let mut executor = Executor::new();
     executor.spawn(Task::new(zulu_os::task::keyboard::print_keypresses()));
     executor.run();
+    */
+    let elf = ElfBytes::<AnyEndian>::minimal_parse(CHILD_PROCESS).expect("Open test1");
+    loop {
+    }
 }
 
 /// This function is called on panic.
