@@ -29,7 +29,6 @@ impl Executor {
     }
 
     fn run_ready_tasks(&mut self) {
-        crate::println!("There are {} tasks", self.task_queue.len());
         while let Ok(id) = self.task_queue.pop() {
             let task = match self.tasks.get_mut(&id) {
                 Some(t) => t,
@@ -62,13 +61,7 @@ impl Executor {
     }
 
     fn sleep_if_idle(&self) {
-        crate::sys::wait_for_interrupts_if(|| {
-            let b = self.task_queue.is_empty();
-            if b {
-                crate::println!("Sleeping");
-            }
-            b
-        });
+        crate::sys::wait_for_interrupts_if(|| self.task_queue.is_empty());
     }
 }
 

@@ -6,10 +6,10 @@
 
 extern crate alloc;
 
-use bootloader::BootInfo;
-use core::panic::PanicInfo;
-use zulu_os::task::executor::Executor;
-use zulu_os::task::Task;
+use {
+    bootloader::BootInfo, core::panic::PanicInfo, elf::endian::LittleEndian, elf::ElfBytes,
+    zulu_os::println, zulu_os::task::executor::Executor, zulu_os::task::Task,
+};
 
 use x86_64::VirtAddr;
 
@@ -30,17 +30,53 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     unsafe { zulu_os::allocator::init_kernel_heap(&mut mapper, &mut frame_allocator) }
         .expect("Failed to init heap");
 
-    #[cfg(test)]
-    test_main();
+    //#[cfg(test)]
+    //test_main();
 
-    /*
+    let elf = ElfBytes::<LittleEndian>::minimal_parse(CHILD_PROCESS).expect("Open test1");
+    let (sections, strtab) = elf.section_headers_with_strtab().unwrap();
+    let (sections, strtab) = (sections.unwrap(), strtab.unwrap());
+    println!("entry: 0x{:X?}", elf.ehdr.e_entry);
+    println!("type: {:?}", elf.ehdr.e_type);
+    for section in sections {
+        use object::elf::*;
+        let ty = match section.sh_type.try_into().unwrap() {
+            ET_NONE => "none",
+            ET_REL => "rel",
+            ET_EXEC => "exec",
+            ET_DYN => "dyn",
+            ET_CORE => "core",
+            _ => "unknown",
+        };
+        let read = true;
+        let write = section.sh_flags & SHF_WRITE as u64 != 0;
+        let execute = section.sh_flags & SHF_EXECINSTR as u64 != 0;
+        let name = strtab.get(section.sh_name as usize).unwrap();
+        let r = if read { "R" } else { "." };
+        let w = if write { "W" } else { "." };
+        let x = if execute { "X" } else { "." };
+
+        let file_start = section.sh_offset as usize;
+        let file_end = section.sh_offset + section.sh_size;
+        let virtual_start = section.sh_addr;
+        let virtual_end = section.sh_addr + section.sh_size;
+
+        if name == ".text" {
+            println!(
+                "{:X} {:X}",
+                CHILD_PROCESS[file_start],
+                CHILD_PROCESS[file_start + 1]
+            );
+        }
+        println!(
+            "  {:16}: {}{}{}: {:X}..{:X} -> {:X} {:X} align: {}",
+            name, r, w, x, file_start, file_end, virtual_start, virtual_end, section.sh_addralign
+        );
+    }
+
     let mut executor = Executor::new();
     executor.spawn(Task::new(zulu_os::task::keyboard::print_keypresses()));
     executor.run();
-    */
-    let elf = ElfBytes::<AnyEndian>::minimal_parse(CHILD_PROCESS).expect("Open test1");
-    loop {
-    }
 }
 
 /// This function is called on panic.
