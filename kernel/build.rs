@@ -1,6 +1,10 @@
-use std::process::Command;
+use std::{io::Write, process::Command};
 
 fn main() {
+    println!("cargo:rerun-if-changed=../userspace_test/");
+    std::env::set_var("REBUILD", format!("{:?}", std::time::Instant::now()));
+    println!("cargo:rerun-if-env-changed=REBUILD");
+
     #[cfg(debug_assertions)]
     let args = ["build"];
     #[cfg(not(debug_assertions))]
@@ -10,7 +14,12 @@ fn main() {
         .current_dir("../userspace_test/")
         .output()
         .expect("failed to execute process");
-    assert!(output.status.success());
+    if !output.status.success() {
+        std::io::stderr().write(&output.stdout).unwrap();
+        std::io::stderr().write(&output.stderr).unwrap();
+        println!("cargo:rerun-if-changed=../userspace_test/");
+        panic!("Failed to compile userspace test");
+    }
 
     #[cfg(debug_assertions)]
     let profile = "debug";
@@ -24,5 +33,4 @@ fn main() {
         .current_dir("../userspace_test/")
         .output()
         .expect("failed to execute process");
-    
 }
