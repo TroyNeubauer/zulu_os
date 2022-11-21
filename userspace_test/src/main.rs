@@ -6,30 +6,58 @@ use core::{
     arch::asm,
     panic::PanicInfo,
     ptr,
-    sync::atomic::{compiler_fence, AtomicIsize, AtomicUsize, Ordering},
+    sync::atomic::{AtomicIsize, AtomicUsize, Ordering},
 };
 
 pub static VAL: AtomicUsize = AtomicUsize::new(0);
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    let s = "TEST\nABC";
-    syscall(s.as_ptr(), s.len());
+    // let s = "TEST\nABC";
+    syscall(0x6969, 0, 1, 2, 3, 4);
     print("child didnt crash!");
     loop {}
 }
 
-fn syscall(ptr: *const u8, len: usize) {
-    compiler_fence(Ordering::SeqCst);
+#[naked]
+extern "sysv64" fn syscall(
+    syscall_num: usize, // rdi
+    arg0: usize,        // rsi
+    arg1: usize,        // rdx
+    arg2: usize,        // rcx
+    arg3: usize,        // r8
+    arg4: usize,        // r9
+) {
+    // Kernel syscall format we have to match before issuing syscall
+    //
+    // rcx  return address (written by syscall)
+    // r11  saved rflags(written by syscall)
+    // rdi  system call number
+    // rsi  arg0
+    // rdx  arg1
+    // r10  arg2
+    // r8   arg3
+    // r9   arg4
+    //
+    //
+    // SystemV already has registers in the folowing order:
+    //
+    // rdi  syscall number
+    // rsi  arg0
+    // rdx  arg1
+    // rcx  arg2 => gets set by syscall to return pointer
+    // r8   arg3
+    // r9   arg4
     unsafe {
         asm!(
-            "mov rdi, {ptr}",
-            "mov rsi, {len}",
+            // rsi (arg0) already in place
+            // rdx (arg1) already in place
+            "mov r10, rcx", // put arg2 in place
+            // r8 (arg3) already in place
+            // r9 (arg4) already in place
             "syscall",
-            ptr = in(reg) ptr,
-            len = in(reg) len,
-            out("rdi") _,
-            out("rsi") _,
+            "ret",
+            options(noreturn)
         )
     }
 }

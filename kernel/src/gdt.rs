@@ -50,6 +50,7 @@ lazy_static::lazy_static! {
         let user_code_selector = gdt.add_entry(Descriptor::user_code_segment());
 
         let tss_selector = gdt.add_entry(Descriptor::tss_segment(&TSS));
+        let kernel_data_selector2 = gdt.add_entry(Descriptor::kernel_data_segment());
 
         let selectors = Selectors {
             kernel_code_selector,
@@ -57,6 +58,7 @@ lazy_static::lazy_static! {
             user_code_selector,
             user_data_selector,
             tss_selector,
+            kernel_data_selector2,
         };
 
         (gdt, selectors)
@@ -69,21 +71,66 @@ struct Selectors {
     user_code_selector: SegmentSelector,
     user_data_selector: SegmentSelector,
     tss_selector: SegmentSelector,
+    kernel_data_selector2: SegmentSelector,
+}
+
+#[no_mangle]
+extern "sysv64" fn syscall_handler_inner(
+    syscall_num: usize,
+    arg0: usize,
+    arg1: usize,
+    arg2: usize,
+    arg3: usize,
+    arg4: usize,
+) {
+    println!(
+        "SYSCALL: num: {}, 0: 0x{:X}, 1: 0x{:X} , 2: 0x{:X} , 3: 0x{:X} , 4: 0x{:X}",
+        syscall_num, arg0, arg1, arg2, arg3, arg4
+    );
 }
 
 #[naked]
 #[no_mangle]
 extern "x86-interrupt" fn syscall_handler() {
+    // RBX, RSP, RBP, and R12–R15, need to be preserved inside syscall
     unsafe {
         asm!(
-            // C calling convertion says r10 and r11 are caller saved registers
-            "push r10",
+            // TODO: switch to kernel stack
+            //
+            // Registers on entry:
+            //
+            // rcx  return address
+            // r11  saved rflags
+            // rdi  system call number
+            // rsi  arg0
+            // rdx  arg1
+            // r10  arg2
+            // r8   arg3
+            // r9   arg4
+            //
+            // Push return address
+            "push rcx",
+            // Push saved rflags
             "push r11",
-            // rdi, rsi, have good values, and are parameters #1 and #2 in Cdecl so were good to go
-            "call my_write",
+            // SystemV expects registers in the folowing order for calling syscall_handler_inner
+            //
+            // rdi  syscall number
+            // rsi  arg0
+            // rdx  arg1
+            // rcx  arg2 => gets set by syscall to return pointer
+            // r8   arg3
+            // r9   arg4
+            "mov rcx, r10",
+
+            "call syscall_handler_inner",
+
             "pop r11",
-            "pop r10",
+            "pop rcx",
+            // TODO: restore user stack
+            // "mov rsp, rsi",
+            // "mov rbp, rsi",
             "sysretq",
+
             // TODO: Fix stack alignment so we can return properly
             options(noreturn)
         )
@@ -91,7 +138,7 @@ extern "x86-interrupt" fn syscall_handler() {
 }
 
 pub fn init() {
-    use x86_64::instructions::segmentation::{CS, DS};
+    use x86_64::instructions::segmentation::{CS, DS, GS};
     use x86_64::instructions::tables::load_tss;
     use x86_64::registers::model_specific::{Efer, EferFlags, LStar, Star};
     use x86_64::registers::segmentation::Segment;
@@ -101,6 +148,7 @@ pub fn init() {
     unsafe {
         CS::set_reg(GDT.1.kernel_code_selector);
         DS::set_reg(GDT.1.kernel_data_selector);
+        GS::set_reg(GDT.1.kernel_data_selector2);
         Star::write(
             GDT.1.user_code_selector,
             GDT.1.user_data_selector,

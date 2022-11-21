@@ -105,7 +105,7 @@ pub unsafe extern "sysv64" fn enter_user_mode(addr: u64, user_stack: u64) -> ! {
             // rip gets set to rcx when sysret is invoked, so write our first parameter there
             "mov rcx, rdi",
             "mov r11, 0x202",
-            "mov rsp, rsi", // setup stack with `user_stack`
+            "mov rsp, rsi", // setup stack with `user_stack` (second param)
             "mov rbp, rsi",
             "sysretq",
             options(noreturn)
