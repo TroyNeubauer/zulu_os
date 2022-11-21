@@ -1,5 +1,8 @@
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
-use x86_64::{PhysAddr, VirtAddr, structures::paging::{OffsetPageTable, PageTable, PhysFrame, Size4KiB, FrameAllocator}};
+use x86_64::{
+    structures::paging::{FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB},
+    PhysAddr, VirtAddr,
+};
 
 /// Initialize a new OffsetPageTable.
 ///
@@ -78,4 +81,3 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
         frame
     }
 }
-

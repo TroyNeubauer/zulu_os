@@ -1,11 +1,11 @@
-pub mod simple_executor;
-pub mod keyboard;
 pub mod executor;
+pub mod keyboard;
+pub mod simple_executor;
 
-use core::{future::Future, pin::Pin};
-use core::task::{Context, Poll};
-use core::sync::atomic::{AtomicU64, Ordering};
 use alloc::boxed::Box;
+use core::sync::atomic::{AtomicU64, Ordering};
+use core::task::{Context, Poll};
+use core::{future::Future, pin::Pin};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct TaskId(u64);
@@ -26,7 +26,7 @@ impl Task {
     fn poll(&mut self, context: &mut Context) -> Poll<()> {
         self.future.as_mut().poll(context)
     }
-    
+
     pub fn new(future: impl Future<Output = ()> + 'static) -> Task {
         Task {
             future: Box::pin(future),

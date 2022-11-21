@@ -1,4 +1,5 @@
 **/target
 **/.gdb_history
+**/peda-session*
 
 /kernel/processes

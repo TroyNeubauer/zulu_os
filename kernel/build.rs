@@ -15,8 +15,8 @@ fn main() {
         .output()
         .expect("failed to execute process");
     if !output.status.success() {
-        std::io::stderr().write(&output.stdout).unwrap();
-        std::io::stderr().write(&output.stderr).unwrap();
+        let _ = std::io::stderr().write(&output.stdout).unwrap();
+        let _ = std::io::stderr().write(&output.stderr).unwrap();
         println!("cargo:rerun-if-changed=../userspace_test/");
         panic!("Failed to compile userspace test");
     }

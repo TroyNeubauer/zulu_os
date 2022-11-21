@@ -15,7 +15,6 @@ pub static VAL: AtomicUsize = AtomicUsize::new(0);
 pub extern "C" fn _start() -> ! {
     let s = "TEST\nABC";
     syscall(s.as_ptr(), s.len());
-    print("after syscall");
     loop {}
 }
 
@@ -33,22 +32,6 @@ fn syscall(ptr: *const u8, len: usize) {
         )
     }
 }
-
-/*
-fn print(s: &str) {
-    let vga_buffer = 0xb8000 as *mut u8;
-    static OFFSET: AtomicIsize = AtomicIsize::new(0);
-    let offset = OFFSET.fetch_add(s.len() as isize, Ordering::SeqCst);
-
-    for (i, byte) in s.bytes().enumerate() {
-        let pos = i as isize * 2 + offset;
-        unsafe {
-            ptr::write_volatile(vga_buffer.offset(pos), byte);
-            ptr::write_volatile(vga_buffer.offset(pos + 1), 0xb);
-        }
-    }
-}
-*/
 
 fn print(s: &str) {
     let vga_buffer = 0xb8000 as *mut u8;

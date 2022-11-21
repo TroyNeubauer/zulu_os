@@ -1,4 +1,3 @@
-
 pub fn without_interrupts<F>(f: F)
 where
     F: FnOnce(),

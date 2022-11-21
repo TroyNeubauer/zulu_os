@@ -5,12 +5,12 @@
 #![reexport_test_harness_main = "test_main"]
 
 use alloc::collections::BTreeMap;
-use object::{elf::FileHeader64, Endianness, LittleEndian, read::elf::ProgramHeader};
+use object::{elf::FileHeader64, read::elf::ProgramHeader, Endianness, LittleEndian};
 
 extern crate alloc;
 
-use num_enum::TryFromPrimitive;
 use core::convert::TryFrom;
+use num_enum::TryFromPrimitive;
 
 use {
     alloc::vec::Vec,
@@ -74,7 +74,6 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     let elf = FileHeader64::<LittleEndian>::parse(CHILD_PROCESS).unwrap();
     let program_headers = elf.program_headers(LittleEndian, CHILD_PROCESS).unwrap();
-    
 
     println!("entry: 0x{:X?}", elf.e_entry);
     println!("type: {:?}", elf.e_type);
@@ -98,7 +97,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         Hios = PT_HIOS,
         Loproc = PT_LOPROC,
         Hiproc = PT_HIPROC,
-    } 
+    }
 
     #[derive(Debug, Copy, Clone)]
     struct VirtualMapDestination {
@@ -259,11 +258,11 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     }
 
     for section in &elf_file.segments {
-        
         if section.ty == ElfSegmentType::Load {
             let section_src = &CHILD_PROCESS[section.file_range.clone()];
-            let section_dst: &mut [u8] =
-                unsafe { slice::from_raw_parts_mut(section.addr.start.as_mut_ptr(), section.file_range.len()) };
+            let section_dst: &mut [u8] = unsafe {
+                slice::from_raw_parts_mut(section.addr.start.as_mut_ptr(), section.file_range.len())
+            };
             section_dst.copy_from_slice(section_src);
             let to_print = &section_src[..cmp::min(16, section_src.len())];
             println!("  loaded segment {:X?}", to_print);
@@ -277,11 +276,10 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                 mapper.update_flags(page, original_flags).unwrap().flush();
             }
         }
-    } 
+    }
 
     let entry_point = elf_file.entry_point.as_ptr();
-    let val = unsafe { *entry_point };
-    println!("Jumping to addr: {:?}: {}", entry_point, val);
+    println!("Jumping to addr: {:?}", entry_point);
     println!("");
     unsafe { jmp(entry_point) }
     println!("");
