@@ -15,6 +15,7 @@ pub static VAL: AtomicUsize = AtomicUsize::new(0);
 pub extern "C" fn _start() -> ! {
     let s = "TEST\nABC";
     syscall(s.as_ptr(), s.len());
+    print("child didnt crash!");
     loop {}
 }
 

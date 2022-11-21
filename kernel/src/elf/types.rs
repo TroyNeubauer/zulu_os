@@ -1,6 +1,6 @@
 use {
     alloc::vec::Vec,
-    core::ops::Range,
+    core::{mem, ops::Range},
     num_enum::TryFromPrimitive,
     object::elf::*,
     x86_64::{
@@ -63,6 +63,11 @@ impl ElfFile {
             segment.addr.remap(&f);
         }
     }
+
+    pub fn run(self) -> ! {
+        unsafe { jmp(mem::transmute(self.entry_point)) };
+        unreachable!();
+    }
 }
 
 impl VirtualMapDestination {
@@ -78,4 +83,11 @@ impl VirtualMapDestination {
     pub fn remap(&mut self, f: &impl Fn(VirtAddr) -> VirtAddr) {
         self.start = f(self.start);
     }
+}
+
+#[no_mangle]
+#[inline(never)]
+pub unsafe extern "C" fn jmp(addr: *const u8) {
+    let fn_ptr: fn() = unsafe { mem::transmute(addr) };
+    fn_ptr();
 }

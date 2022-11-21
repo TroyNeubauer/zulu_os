@@ -151,18 +151,5 @@ pub fn load(
         }
     }
 
-    let entry_point = elf_file.entry_point.as_ptr();
-    println!("Jumping to addr: {:?}", entry_point);
-    println!("");
-    unsafe { jmp(entry_point) }
-    println!("");
-
     elf_file
-}
-
-#[no_mangle]
-#[inline(never)]
-pub unsafe extern "C" fn jmp(addr: *const u8) {
-    let fn_ptr: fn() = unsafe { mem::transmute(addr) };
-    fn_ptr();
 }

@@ -34,12 +34,12 @@ macro_rules! include_bytes_align_as {
     }};
 }
 
-bootloader::entry_point!(kernel_main);
-
 #[repr(align(4096))]
 struct Align4096;
 
 static CHILD_PROCESS: &[u8] = include_bytes_align_as!(Align4096, "../processes/userspace_test");
+
+bootloader::entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
     zulu_os::init(boot_info);
@@ -52,10 +52,11 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     unsafe { zulu_os::allocator::init_kernel_heap(&mut mapper, &mut frame_allocator) }
         .expect("Failed to init heap");
 
-    let _bin = zulu_os::elf::load(CHILD_PROCESS, &mut mapper, &mut frame_allocator);
-
     #[cfg(test)]
     test_main();
+
+    let bin = zulu_os::elf::load(CHILD_PROCESS, &mut mapper, &mut frame_allocator);
+    bin.run();
 
     let mut executor = Executor::new();
     executor.spawn(Task::new(zulu_os::task::keyboard::print_keypresses()));

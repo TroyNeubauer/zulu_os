@@ -68,9 +68,8 @@ pub async fn print_keypresses() {
 
 pub(crate) fn add_scancode(scancode: u8) {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
-        match queue.push(scancode) {
-            Err(_err) => crate::println!("WARNING: scancode buf full! {} ignored", scancode),
-            Ok(()) => WAKER.wake(),
+        if let Ok(()) = queue.push(scancode) {
+            WAKER.wake();
         }
     } else {
         crate::println!("WARNING: scancode buf not initialized");
