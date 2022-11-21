@@ -35,7 +35,7 @@ pub fn init_idt() {
 }
 
 #[no_mangle]
-extern "C" fn my_write(ptr: *const u8, len: usize) {
+extern "sysv64" fn my_write(ptr: *const u8, len: usize) {
     let slice = unsafe { slice::from_raw_parts(ptr, len) };
     let string = core::str::from_utf8(slice).unwrap();
     print!("{}", string);
@@ -46,9 +46,15 @@ extern "C" fn my_write(ptr: *const u8, len: usize) {
 extern "x86-interrupt" fn breakpoint_handler(frame: InterruptStackFrame) {
     unsafe {
         asm!(
-            // C calling convertion says r10 and r11 are caller saved registers
+            // System v 64 calling convertion says that the scratch registers are:
+            //   `rax`, `rdx`, `rdi`, `rsi`, `rcx`, `r8`, `r9`, `r10`, `r11`
+            // But we only need to save `r10` and `r11` because `rax`, `rdx` are expected to be
+            // clobbered by any return value anyway, then `rdi`, `rsi`, `rdx`, `rcx`, `r8`, `r9`
+            // are used for parameters which we transparently pass to the rust funcion.
+            // This leaves just r10 and r11
             "push r10",
             "push r11",
+            // TODO: Push all registers 
             // rdi, rsi, have good values, and are parameters #1 and #2 in Cdecl so were good to go
             "call my_write",
             "pop r11",
@@ -59,8 +65,9 @@ extern "x86-interrupt" fn breakpoint_handler(frame: InterruptStackFrame) {
     };
 }
 
+#[naked]
 #[no_mangle]
-extern "C" fn crash_by_div() {
+extern "sysv64" fn crash_by_div() {
     unsafe {
         asm!(
             "mov rax, 0",

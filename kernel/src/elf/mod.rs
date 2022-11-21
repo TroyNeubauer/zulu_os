@@ -1,20 +1,24 @@
 mod types;
 pub use types::*;
 
-use alloc::{collections::BTreeMap, vec::Vec};
-use core::{cmp, mem, slice};
-use object::{
-    elf::FileHeader64,
-    read::elf::{FileHeader, ProgramHeader},
-    LittleEndian,
-};
-use types::ElfFile;
-use x86_64::{
-    structures::paging::{FrameAllocator, Mapper, OffsetPageTable, Page, PageTableFlags, Size4KiB},
-    VirtAddr,
-};
-
 use crate::println;
+
+use {
+    alloc::{collections::BTreeMap, vec::Vec},
+    core::slice,
+    object::{
+        elf::FileHeader64,
+        read::elf::{FileHeader, ProgramHeader},
+        LittleEndian,
+    },
+    types::ElfFile,
+    x86_64::{
+        structures::paging::{
+            FrameAllocator, Mapper, OffsetPageTable, Page, PageTableFlags, Size4KiB,
+        },
+        VirtAddr,
+    },
+};
 
 // syncs up with constant in gdb.sh so gdb knows where to look when were debugging this
 const LOAD_TEXT_SECTION_AT: u64 = 0x660000;
@@ -27,13 +31,10 @@ pub fn load(
     let elf = FileHeader64::<LittleEndian>::parse(bytes).unwrap();
     let program_headers = elf.program_headers(LittleEndian, bytes).unwrap();
 
-    println!("entry: 0x{:X?}", elf.e_entry);
-    println!("type: {:?}", elf.e_type);
-
     let mut segments = Vec::new();
     for segment in program_headers {
         let Ok(parsed_ty) = segment.p_type(LittleEndian).try_into() else {
-            println!("Ignoring unknown segment type: {:?}", segment.p_type);
+            //println!("Ignoring unknown segment type: {:?}", segment.p_type);
             continue;
         };
         if parsed_ty == ElfSegmentType::Null {
@@ -93,7 +94,7 @@ pub fn load(
     }
     let offset_to_apply = LOAD_TEXT_SECTION_AT as i64 - default_text_addr.unwrap() as i64;
 
-    println!("rel offset is 0x{:X?}", offset_to_apply);
+    //println!("rel offset is 0x{:X?}", offset_to_apply);
     elf_file.remap(|src| VirtAddr::new((src.as_u64() as i64 + offset_to_apply) as u64));
 
     let mut pages_to_map = BTreeMap::<Page, PageTableFlags>::new();
@@ -115,13 +116,13 @@ pub fn load(
                 .or_insert(segment.flags);
         }
     }
-    println!("mapping: {:?}", pages_to_map);
+    //println!("mapping: {:?}", pages_to_map);
     for (&page, &original_flags) in &pages_to_map {
         let frame = allocator.allocate_frame().unwrap();
         // unconditionally add writable flag so we can copy the section data to it
         let flags = original_flags | PageTableFlags::WRITABLE;
 
-        println!("  mapping {:?} to {:?} with {:?}", page, frame, flags);
+        //println!("  mapping {:?} to {:?} with {:?}", page, frame, flags);
         unsafe {
             mapper
                 .map_to(page, frame, flags, allocator)
@@ -137,8 +138,8 @@ pub fn load(
                 slice::from_raw_parts_mut(section.addr.start.as_mut_ptr(), section.file_range.len())
             };
             section_dst.copy_from_slice(section_src);
-            let to_print = &section_src[..cmp::min(16, section_src.len())];
-            println!("  loaded segment {:X?}", to_print);
+            //let to_print = &section_src[..cmp::min(16, section_src.len())];
+            //println!("  loaded segment {:X?}", to_print);
         }
     }
 
