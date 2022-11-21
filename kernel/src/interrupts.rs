@@ -1,8 +1,6 @@
-use core::hint::unreachable_unchecked;
-
 use {
-    crate::println,
-    core::{arch::asm, mem},
+    crate::{print, println, QemuExitCode},
+    core::{arch::asm, mem, slice},
     pic8259::ChainedPics,
     x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode},
 };
@@ -36,10 +34,30 @@ pub fn init_idt() {
     IDT.load();
 }
 
+#[no_mangle]
+extern "C" fn my_write(ptr: *const u8, len: usize) {
+    let slice = unsafe { slice::from_raw_parts(ptr, len) };
+    let val = slice[0];
+    let string = core::str::from_utf8(slice).unwrap();
+    print!("{}", string);
+}
+
 #[naked]
 #[no_mangle]
 extern "x86-interrupt" fn breakpoint_handler(frame: InterruptStackFrame) {
-    unsafe { asm!("push rax", "pop rax", "iretq", "nop", options(noreturn)) };
+    unsafe {
+        asm!(
+            // C calling convertion says r10 and r11 are caller saved registers
+            "push r10",
+            "push r11",
+            // rdi, rsi, have good values, and are parameters #1 and #2 in Cdecl so were good to go
+            "call my_write",
+            "pop r11",
+            "pop r10",
+            "iretq",
+            options(noreturn)
+        )
+    };
 }
 
 #[no_mangle]
@@ -62,7 +80,8 @@ extern "x86-interrupt" fn divide_error_handler(frame: InterruptStackFrame) {
 
 #[no_mangle]
 extern "x86-interrupt" fn double_fault_handler(frame: InterruptStackFrame, code: u64) -> ! {
-    panic!("DOUBLE FAULT. Code: {}\n{:#?}", code, frame)
+    println!("DOUBLE FAULT. Code: {}\n{:#?}", code, frame);
+    crate::exit_qemu(QemuExitCode::Failed);
 }
 
 #[no_mangle]

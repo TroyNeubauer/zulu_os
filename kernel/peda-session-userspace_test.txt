@@ -1,5 +1,0 @@
-break jmp
-disable $bpnum
-break breakpoint_handler
-disable $bpnum
-
