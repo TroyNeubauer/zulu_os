@@ -1,6 +1,6 @@
 use {
     crate::{print, println, QemuExitCode},
-    core::{arch::asm, mem, slice},
+    core::{arch::asm, slice},
     pic8259::ChainedPics,
     x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode},
 };
@@ -37,7 +37,6 @@ pub fn init_idt() {
 #[no_mangle]
 extern "C" fn my_write(ptr: *const u8, len: usize) {
     let slice = unsafe { slice::from_raw_parts(ptr, len) };
-    let val = slice[0];
     let string = core::str::from_utf8(slice).unwrap();
     print!("{}", string);
 }

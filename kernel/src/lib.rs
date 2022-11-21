@@ -14,6 +14,7 @@ use bootloader::BootInfo;
 use core::panic::PanicInfo;
 
 pub mod allocator;
+pub mod elf;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
