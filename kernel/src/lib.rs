@@ -24,7 +24,7 @@ pub mod task;
 pub mod vga_buffer;
 
 pub fn init(_boot_info: &'static BootInfo) {
-    gdt::init();
+    gdt::gdt_init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();

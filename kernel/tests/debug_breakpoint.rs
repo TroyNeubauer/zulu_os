@@ -8,7 +8,7 @@ use zulu_os::serial_print;
 pub extern "C" fn _start() -> ! {
     serial_print!("stack_overflow::stack_overflow...\t");
 
-    zulu_os::gdt::init();
+    zulu_os::gdt::gdt_init();
     TEST_IDT.load();
 
     x86_64::instructions::interrupts::int3();

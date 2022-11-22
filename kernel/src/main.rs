@@ -18,7 +18,7 @@ use {
     core::arch::asm,
     core::panic::PanicInfo,
     x86_64::VirtAddr,
-    zulu_os::{memory::BootInfoFrameAllocator, task::executor::Executor, task::Task},
+    zulu_os::{gdt, memory::BootInfoFrameAllocator, sys, task::executor::Executor, task::Task},
 };
 
 #[repr(C)] // guarantee 'bytes' comes after '_align'
@@ -60,6 +60,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     unsafe { zulu_os::allocator::init_kernel_heap(&mut mapper, &mut frame_allocator) }
         .expect("Failed to init heap");
 
+    gdt::init_thread_data();
+
     #[cfg(test)]
     test_main();
 
@@ -81,6 +83,13 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                 .flush();
         };
     }
+
+    unsafe {
+        gdt::with_thread_data(|d| {
+            d.kernel_rsp = VirtAddr::new(0x420000);
+            d.kernel_rbp = x86_64::instructions::read_rip();
+        })
+    };
 
     let bin = zulu_os::elf::load(CHILD_PROCESS, &mut mapper, &mut frame_allocator);
 

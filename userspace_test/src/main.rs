@@ -9,13 +9,16 @@ use core::{
     sync::atomic::{AtomicIsize, AtomicUsize, Ordering},
 };
 
-pub static VAL: AtomicUsize = AtomicUsize::new(0);
+pub static VAL: AtomicUsize = AtomicUsize::new(0xFF00);
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    // let s = "TEST\nABC";
-    syscall(0x6969, 0, 1, 2, 3, 4);
-    print("child didnt crash!");
+    let a = VAL.fetch_add(4, Ordering::Relaxed);
+    let b = VAL.fetch_add(4, Ordering::Relaxed);
+    let c = VAL.fetch_add(4, Ordering::Relaxed);
+    let d = VAL.fetch_add(4, Ordering::Relaxed);
+    let e = VAL.fetch_add(4, Ordering::Relaxed);
+    syscall(0x6969, a, b, c, d, e);
     loop {}
 }
 
@@ -50,75 +53,24 @@ extern "sysv64" fn syscall(
     // r9   arg4
     unsafe {
         asm!(
+            // we clobber r10 and r11, so backup because these are non-volatile registers
+            "push r10",
+            "push r11",
             // rsi (arg0) already in place
             // rdx (arg1) already in place
             "mov r10, rcx", // put arg2 in place
             // r8 (arg3) already in place
             // r9 (arg4) already in place
             "syscall",
+            "pop r11",
+            "pop r10",
             "ret",
             options(noreturn)
         )
     }
 }
 
-fn print(s: &str) {
-    let vga_buffer = 0xb8000 as *mut u8;
-    static OFFSET: AtomicIsize = AtomicIsize::new(0);
-    let offset = OFFSET.fetch_add(s.len() as isize, Ordering::SeqCst);
-
-    for (i, byte) in s.bytes().enumerate() {
-        let pos = i as isize * 2 + offset;
-        unsafe {
-            ptr::write_volatile(vga_buffer.offset(pos), byte);
-            ptr::write_volatile(vga_buffer.offset(pos + 1), 0xb);
-        }
-    }
-}
-
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
-}
-
-macro_rules! syscall {
-    ($($name:ident($a:ident, $($b:ident, $($c:ident, $($d:ident, $($e:ident, $($f:ident, )?)?)?)?)?);)+) => {
-        $(
-            pub unsafe fn $name(mut $a: usize, $($b: usize, $($c: usize, $($d: usize, $($e: usize, $($f: usize)?)?)?)?)?) -> usize {
-                asm!(
-                    "syscall",
-                    inout("rax") $a,
-                    $(
-                        in("rdi") $b,
-                        $(
-                            in("rsi") $c,
-                            $(
-                                in("rdx") $d,
-                                $(
-                                    in("r10") $e,
-                                    $(
-                                        in("r8") $f,
-                                    )?
-                                )?
-                            )?
-                        )?
-                    )?
-                    out("rcx") _,
-                    out("r11") _,
-                    options(nostack),
-                );
-
-                $a
-            }
-        )+
-    };
-}
-
-syscall! {
-    syscall0(a,);
-    syscall1(a, b,);
-    syscall2(a, b, c,);
-    syscall3(a, b, c, d,);
-    syscall4(a, b, c, d, e,);
-    syscall5(a, b, c, d, e, f,);
 }
