@@ -1,5 +1,5 @@
 #!/bin/bash
-if [[ $* == *--flag* ]]
+if [[ $* == *--release* ]]
 then
     echo "using release"
     FILE="target/x86_64/release/zulu_os"
@@ -12,5 +12,5 @@ rust-gdb $FILE -ex "target remote :1234" \
     "--eval-command=b enter_user_mode" \
     "--eval-command=b syscall_handler" \
     "--eval-command=c" \
-    #"--eval-command=add-symbol-file processes/userspace_test 0x660000"
+    "--eval-command=add-symbol-file processes/userspace_test 0x660000"
 

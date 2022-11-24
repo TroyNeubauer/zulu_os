@@ -77,6 +77,13 @@ struct Selectors {
     kernel_data_selector2: SegmentSelector,
 }
 
+#[repr(u8)]
+pub enum Syscalls {
+    Read = 1,
+    Write = 2,
+    Exit = 3,
+}
+
 #[no_mangle]
 extern "sysv64" fn syscall_handler_inner(
     syscall_num: usize,
@@ -88,7 +95,7 @@ extern "sysv64" fn syscall_handler_inner(
 ) {
     println!(
         "SYSCALL: num: {syscall_num}, 0: 0x{arg0:X}, 1: 0x{arg1:X} , 2: 0x{arg2:X} , 3: 0x{arg3:X} , 4: 0x{arg4:X}",
-    );
+    ); 
 
     let (a, b) = unsafe { crate::gdt::with_thread_data(|d| (d.kernel_rsp, d.kernel_rbp)) };
     println!("saved stuff: {a:?} - {b:?}");
@@ -154,7 +161,8 @@ pub struct ThreadData {
 /// 2. This function must not be called before `gdt_init` is called
 ///
 /// NOTE: Interrupts are disabled for the duration that `f` runs to prevent data races, so the
-/// critical section of `f` should be short
+/// critical section of `f` should be short. This also means that `with_thread_data` can be
+/// accessed during interrupts to obtain access to kernel data
 pub unsafe fn with_thread_data<F, T>(f: F) -> T
 where
     F: FnOnce(&mut ThreadData) -> T,

@@ -84,10 +84,13 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         };
     }
 
+    let a = VirtAddr::new(0x420000);
+    let b = x86_64::instructions::read_rip();
+    println!("setting stuff to {:?}, {:?}", a, b);
     unsafe {
         gdt::with_thread_data(|d| {
-            d.kernel_rsp = VirtAddr::new(0x420000);
-            d.kernel_rbp = x86_64::instructions::read_rip();
+            d.kernel_rsp = a;
+            d.kernel_rbp = b;
         })
     };
 
