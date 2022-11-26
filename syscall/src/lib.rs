@@ -4,18 +4,32 @@
 
 use core::arch::asm;
 use core::hint::unreachable_unchecked;
+use num_enum::TryFromPrimitive;
 
+#[derive(Copy, Clone, Debug, TryFromPrimitive)]
 #[repr(u8)]
-pub enum Syscalls {
+pub enum Syscall {
     Read = 1,
     Write = 2,
     Exit = 3,
 }
 
+#[derive(Copy, Clone, Debug, TryFromPrimitive)]
+#[repr(u8)]
+pub enum Error {
+    /// No such system call
+    NoSys,
+    /// Invalid argument to syscall
+    InvalidArgument,
+}
+
+pub type Result<T> = core::result::Result<T, Error>;
+
+#[inline]
 pub fn write(fd: u32, bytes: &[u8]) -> usize {
     unsafe {
         syscall_3(
-            Syscalls::Write as usize,
+            Syscall::Write as usize,
             fd as usize,
             bytes.as_ptr() as usize,
             bytes.len(),
@@ -23,8 +37,21 @@ pub fn write(fd: u32, bytes: &[u8]) -> usize {
     }
 }
 
+#[inline]
+pub fn read(fd: u32, bytes: &mut [u8]) -> usize {
+    unsafe {
+        syscall_3(
+            Syscall::Read as usize,
+            fd as usize,
+            bytes.as_mut_ptr() as usize,
+            bytes.len(),
+        )
+    }
+}
+
+#[inline]
 pub fn exit(code: u32) -> ! {
-    unsafe { syscall_1(Syscalls::Exit as usize, code as usize) };
+    unsafe { syscall_1(Syscall::Exit as usize, code as usize) };
     unsafe { unreachable_unchecked() };
 }
 

@@ -18,6 +18,7 @@ pc-keyboard = "0.5.0"
 num_enum = { version = "0.5.7", default-features = false }
 raw-cpuid = "10.6.0"
 memoffset = { version = "0.7.1", features = ["unstable_const"] }
+syscall = { path = "../syscall/" }
 
 [dependencies.object]
 version = "0.29.0"

@@ -229,6 +229,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "syscall"
+version = "0.1.0"
+dependencies = [
+ "num_enum",
+]
+
+[[package]]
 name = "uart_16550"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -285,6 +292,7 @@ dependencies = [
  "pic8259",
  "raw-cpuid",
  "spin",
+ "syscall",
  "uart_16550",
  "volatile 0.2.7",
  "x86_64",

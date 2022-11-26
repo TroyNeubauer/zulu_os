@@ -17,6 +17,7 @@ use bootloader::BootInfo;
 use core::panic::PanicInfo;
 
 pub mod allocator;
+pub mod syscall;
 pub mod elf;
 pub mod gdt;
 pub mod interrupts;
@@ -30,6 +31,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     gdt::gdt_init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
+    syscall::init();
 }
 
 pub trait Testable {

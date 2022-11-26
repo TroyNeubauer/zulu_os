@@ -17,7 +17,7 @@ use {
         structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags},
         VirtAddr,
     },
-    zulu_os::{gdt, memory, memory::BootInfoFrameAllocator, sys},
+    zulu_os::{memory, memory::BootInfoFrameAllocator, syscall},
 };
 
 #[repr(C)] // guarantee 'bytes' comes after '_align'
@@ -77,7 +77,7 @@ extern "C" fn kernel_main(boot_info: &'static BootInfo, rsp: u64) -> ! {
         frame_allocator
     });
 
-    gdt::init_thread_data(gdt::ThreadData {
+    syscall::init_thread_data(syscall::ThreadData {
         kernel_rsp: NonZeroU64::new(rsp),
         user_tmp_rsp: None,
     });
