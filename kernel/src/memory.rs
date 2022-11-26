@@ -1,36 +1,22 @@
+use core::mem::MaybeUninit;
+
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use x86_64::{
     structures::paging::{FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB},
     PhysAddr, VirtAddr,
 };
 
-/// Initialize a new OffsetPageTable.
+/// Initialize a new OffsetPageTable, and calls `f` with the new page mapper.
+///
+/// Call [`with_mapper`] to obtain an instance to this therad's mapper later.
 ///
 /// # Safety
 ///
 /// 1. The caller must guarantee that the complete physical memory is mapped to virtual memory at
 ///     the passed `physical_memory_offset`.
 ///
-/// 2. Also, this function must be only called once to avoid aliasing `&mut` references
-///     (which is undefined behavior).
-pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
-    // # Safety
-    // Caller has guaranteed these conditions
-    let level_4_table = unsafe { active_level_4_table(physical_memory_offset) };
-    unsafe { OffsetPageTable::new(level_4_table, physical_memory_offset) }
-}
-
-/// Returns a mutable reference to the active level 4 table.
-///
-/// # Safety
-///
-/// 1. The caller must guarantee that the complete physical memory is mapped to virtual memory at
-///     the passed `physical_memory_offset`.
-///
-/// 2. This function must be only called once to avoid aliasing `&mut` references
-///     (which is undefined behavior).
-///
-unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut PageTable {
+/// 2. This function must be only called once, and while interrupt are disabled
+pub unsafe fn init<'g>(physical_memory_offset: VirtAddr) -> MapperGuard<'g> {
     use x86_64::registers::control::Cr3;
     let (level4_frame, _) = Cr3::read();
 
@@ -38,7 +24,46 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
     let virt_addr = physical_memory_offset + phys_addr.as_u64();
     let page_table_ptr: *mut PageTable = virt_addr.as_mut_ptr();
 
-    unsafe { &mut *page_table_ptr }
+    // SAFETY: Caller has guaranteed that physical memory is mapped at `physical_memory_offset`
+    let level_4_table = unsafe { &mut *page_table_ptr };
+
+    let mapper = unsafe { OffsetPageTable::new(level_4_table, physical_memory_offset) };
+    // SAFETY: The caller will only call this function once, and before `with_mapper` is called,
+    // therefore there no previous state will be lost and there are no data races
+    let mapper = unsafe { MAPPER.write(mapper) };
+    MapperGuard { inner: mapper }
+}
+
+// TODO: make thread local
+static mut MAPPER: MaybeUninit<OffsetPageTable> = MaybeUninit::uninit();
+
+/// Gets a mutable reference to this therad's page mapper
+///
+/// # Safety
+/// 1. The caller must guarntee that this function is never called while another MapperGuard object
+///    is alive (mutable aliasing is UB).
+///    * This includes safety from interrupts, as interrupt handlers may use the mapper, so
+///    interrupts must be disabled during the duration mapper is called
+/// 2. This function must not be called before [`crate::memory::init`] is called
+#[must_use]
+pub unsafe fn mapper<'g>() -> MapperGuard<'g> {
+    MapperGuard {
+        // SAFETY: Given by mapper's safety contract
+        inner: unsafe { MAPPER.assume_init_mut() },
+    }
+}
+
+pub struct MapperGuard<'g> {
+    inner: &'g mut OffsetPageTable<'static>,
+}
+
+impl<'g> MapperGuard<'g> {
+    pub fn with<F, R>(self, f: F) -> R
+    where
+        F: FnOnce(&'g mut OffsetPageTable<'static>) -> R,
+    {
+        f(self.inner)
+    }
 }
 
 /// A FrameAllocator that returns usable frames from the bootloader's memory map.

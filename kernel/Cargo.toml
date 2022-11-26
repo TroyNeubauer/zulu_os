@@ -17,6 +17,7 @@ pic8259 = "0.10.1"
 pc-keyboard = "0.5.0"
 num_enum = { version = "0.5.7", default-features = false }
 raw-cpuid = "10.6.0"
+memoffset = { version = "0.7.1", features = ["unstable_const"] }
 
 [dependencies.object]
 version = "0.29.0"
@@ -44,7 +45,7 @@ test-args = ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "st
 test-success-exit-code = 33
 test-timeout = 60
 run-command = ["qemu-system-x86_64", "-cpu", "Haswell-v1,+fsgsbase", "-drive", "format=raw,file={}", "-s", "-S"]
-#run-command = ["qemu-system-x86_64", "-drive", "format=raw,file={}"]
+#run-command = ["qemu-system-x86_64", "-cpu", "Haswell-v1,+fsgsbase", "-drive", "format=raw,file={}"]
 
 [[test]]
 name = "stack_overflow"

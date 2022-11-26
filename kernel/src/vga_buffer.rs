@@ -12,7 +12,7 @@ lazy_static::lazy_static! {
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::vga_buffer::print(format_args!($($arg)*)));
 }
 
 #[macro_export]
@@ -137,10 +137,20 @@ impl fmt::Write for Writer {
 }
 
 #[doc(hidden)]
-pub fn _print(args: fmt::Arguments) {
+pub fn print(args: fmt::Arguments) {
     use core::fmt::Write;
     crate::sys::without_interrupts(|| {
         WRITER.lock().write_fmt(args).unwrap();
+    });
+}
+
+#[doc(hidden)]
+pub fn print_bytes(bytes: &[u8]) {
+    crate::sys::without_interrupts(|| {
+        let mut writer = WRITER.lock();
+        for &byte in bytes {
+            writer.write_byte(byte);
+        }
     });
 }
 

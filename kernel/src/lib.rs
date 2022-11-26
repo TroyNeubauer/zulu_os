@@ -1,9 +1,12 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
+
 #![feature(custom_test_frameworks)]
 #![feature(alloc_error_handler)]
 #![feature(naked_functions)]
+#![feature(asm_const)]
 #![feature(abi_x86_interrupt)]
+
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -27,7 +30,6 @@ pub fn init(_boot_info: &'static BootInfo) {
     gdt::gdt_init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
-    x86_64::instructions::interrupts::enable();
 }
 
 pub trait Testable {

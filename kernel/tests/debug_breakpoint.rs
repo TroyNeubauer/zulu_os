@@ -9,6 +9,7 @@ pub extern "C" fn _start() -> ! {
     serial_print!("stack_overflow::stack_overflow...\t");
 
     zulu_os::gdt::gdt_init();
+    x86_64::instructions::interrupts::enable();
     TEST_IDT.load();
 
     x86_64::instructions::interrupts::int3();

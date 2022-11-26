@@ -8,3 +8,4 @@ debug = true
 
 [dependencies]
 x86_64 = "0.14.2"
+syscall = { path = "../syscall/" }
