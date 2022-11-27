@@ -19,10 +19,13 @@ fn main(boot_info: &'static BootInfo) -> ! {
 
     zulu_os::init(boot_info);
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
-    unsafe { zulu_os::allocator::init_kernel_heap(&mut mapper, &mut frame_allocator) }
-        .expect("heap initialization failed");
+    unsafe {
+        memory::init(phys_mem_offset).with(|mapper| {
+            zulu_os::allocator::init_kernel_heap(mapper, &mut frame_allocator)
+                .expect("heap initialization failed")
+        })
+    };
 
     test_main();
     zulu_os::sys::hlt_loop()

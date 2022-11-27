@@ -70,6 +70,7 @@ macro_rules! syscall {
         )
     ) => {
         #[naked]
+        #[doc(hidden)]
         pub unsafe extern "sysv64" fn $name(
             syscall_num: usize,
             $($arg0: usize,

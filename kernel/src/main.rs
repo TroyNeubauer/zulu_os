@@ -106,8 +106,7 @@ extern "C" fn kernel_main(boot_info: &'static BootInfo, rsp: u64) -> ! {
             };
         }
 
-        let bin = zulu_os::elf::load(CHILD_PROCESS, mapper, &mut frame_allocator);
-        bin
+        zulu_os::elf::load(CHILD_PROCESS, mapper, &mut frame_allocator)
     });
 
     let top_of_stack = lowest_stack_page.start_address().as_u64() + stack_size;

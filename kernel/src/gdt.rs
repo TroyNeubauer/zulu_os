@@ -1,15 +1,5 @@
-use crate::println;
-use alloc::boxed::Box;
-use core::arch::asm;
-use core::num::NonZeroU64;
-use memoffset::offset_of;
-use num_enum::TryFromPrimitive;
 use x86_64::instructions::segmentation::{CS, DS, GS};
-use x86_64::registers::rflags::RFlags;
-use x86_64::registers::segmentation::Segment64;
 use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector};
-use x86_64::structures::paging::{Page, Size4KiB, Translate};
-use syscall::{Syscall, Error};
 use x86_64::structures::tss::TaskStateSegment;
 use x86_64::VirtAddr;
 
@@ -85,8 +75,7 @@ struct Selectors {
 #[no_mangle]
 pub fn gdt_init() {
     use x86_64::instructions::tables::load_tss;
-    use x86_64::registers::control::{Cr4, Cr4Flags};
-    use x86_64::registers::model_specific::{Efer, EferFlags, LStar, SFMask, Star};
+    use x86_64::registers::model_specific::Star;
     use x86_64::registers::segmentation::Segment;
 
     use raw_cpuid::CpuId;
@@ -109,8 +98,8 @@ pub fn gdt_init() {
             GDT.1.kernel_code_selector,
             GDT.1.kernel_data_selector,
         )
-        .unwrap(); 
- 
+        .unwrap();
+
         load_tss(GDT.1.tss_selector);
     }
 }

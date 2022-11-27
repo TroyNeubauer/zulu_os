@@ -2,22 +2,16 @@ pub mod handler;
 pub mod io;
 pub mod process;
 
-use crate::println;
 use alloc::boxed::Box;
-use core::arch::asm;
 use core::num::NonZeroU64;
-use memoffset::offset_of;
-use num_enum::TryFromPrimitive;
 use syscall::{Error, Result};
-use x86_64::instructions::segmentation::{CS, DS, GS};
+use x86_64::instructions::segmentation::GS;
 use x86_64::registers::control::{Cr4, Cr4Flags};
 use x86_64::registers::model_specific::{Efer, EferFlags, LStar, SFMask};
 use x86_64::registers::rflags::RFlags;
 use x86_64::registers::segmentation::Segment64;
-use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector};
 use x86_64::structures::paging::mapper::TranslateResult;
 use x86_64::structures::paging::{Page, PageTableFlags, Size4KiB, Translate};
-use x86_64::structures::tss::TaskStateSegment;
 use x86_64::VirtAddr;
 
 pub fn init() {
@@ -79,9 +73,23 @@ where
     unsafe { construct_user_slice(ptr, bytes) }.map(f)
 }
 
+/// # Safety
+/// The caller must guarntee that the range `ptr` to `ptr + bytes` is not aliased if a slice can be
+/// constructed (the memory range is mapped and user acessible)
+unsafe fn with_user_slice_mut<F, R>(ptr: usize, bytes: usize, f: F) -> Result<R>
+where
+    F: FnOnce(&mut [u8]) -> R,
+{
+    // SAFETY: `t` is limited to the lifetime of the closure `f`, so there is no time for the bytes
+    // within the closure to be invalidated. The caller would have to return the address or modify a
+    // global, all of which require additional unsafe code to break memory safety
+    unsafe { construct_user_slice_mut(ptr, bytes) }.map(f)
+}
+
 /// Creates a rust slice to a user pointer array after verifying that the memory is mapped
 ///
 /// # Safety:
+///
 /// The caller must guarntee that `ptr` is valid for the lifetime they choose `'t`
 unsafe fn construct_user_slice<'t>(ptr: usize, bytes: usize) -> Result<&'t [u8]> {
     let addr = VirtAddr::try_new(ptr as u64).map_err(|_| Error::InvalidArgument)?;
@@ -109,11 +117,14 @@ unsafe fn construct_user_slice<'t>(ptr: usize, bytes: usize) -> Result<&'t [u8]>
     Ok(unsafe { core::slice::from_raw_parts(data, bytes) })
 }
 
-/// Creates a mutable rust slice to a user pointer array after verifying that the memory is mapped
-/// and writable
+/// Creates a mutable rust slice to a user pointer array after verifying that the memory is mapped,
+/// writable, and user acessible
 ///
 /// # Safety:
-/// The caller must guarntee that `ptr` is valid for the lifetime they choose `'t`
+///
+/// 1. The caller must guarntee that `ptr` is valid for the lifetime they choose `'t`
+/// 2. The caller must guarntee that the range `ptr` to `ptr + bytes` is not aliased if a slice
+/// can be constructed (the memory range is mapped and user acessible)
 unsafe fn construct_user_slice_mut<'t>(ptr: usize, bytes: usize) -> Result<&'t mut [u8]> {
     let addr = VirtAddr::try_new(ptr as u64).map_err(|_| Error::InvalidArgument)?;
     if bytes > isize::MAX as usize {
@@ -181,8 +192,8 @@ pub fn init_thread_data(data: ThreadData) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use core::mem::MaybeUninit;
+    use memoffset::offset_of;
 
     #[test_case]
     fn thread_data_alignment() {

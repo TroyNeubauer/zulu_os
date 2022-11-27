@@ -1,4 +1,4 @@
-use super::{io, with_user_slice, ThreadData};
+use super::{io, with_user_slice, with_user_slice_mut, ThreadData};
 use crate::println;
 use core::arch::asm;
 use memoffset::offset_of;
@@ -21,7 +21,12 @@ extern "sysv64" fn syscall_handler_inner(
         let syscall: Syscall = syscall_num.try_into().map_err(|_| Error::NoSys)?;
 
         match syscall {
-            Syscall::Read => Err(Error::NoSys),
+            // SAFETY: If the slice can be constructed, then it means it is a user page which we do
+            // not alias in the kernel. This memory may be aliased in the user program, but they
+            // are paused so they cannot observe that we alias the same memory here
+            Syscall::Read => unsafe {
+                with_user_slice_mut(arg1, arg2, |bytes| io::write(arg0, bytes))?
+            },
             Syscall::Write => with_user_slice(arg1, arg2, |bytes| io::write(arg0, bytes))?,
             Syscall::Exit => super::process::exit(arg0 as u8),
         }

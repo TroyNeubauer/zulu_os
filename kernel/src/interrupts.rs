@@ -54,7 +54,7 @@ extern "x86-interrupt" fn breakpoint_handler(frame: InterruptStackFrame) {
             // This leaves just r10 and r11
             "push r10",
             "push r11",
-            // TODO: Push all registers 
+            // TODO: Push all registers
             // rdi, rsi, have good values, and are parameters #1 and #2 in Cdecl so were good to go
             "call my_write",
             "pop r11",

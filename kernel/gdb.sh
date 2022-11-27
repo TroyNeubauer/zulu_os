@@ -13,6 +13,7 @@ rust-gdb $FILE -ex "target remote :1234" \
     "--eval-command=b syscall_handler" \
     "--eval-command=b kernel_main" \
     "--eval-command=b _start" \
+    "--eval-command=b gdt_init" \
     "--eval-command=c" \
     "--eval-command=add-symbol-file processes/userspace_test 0x660000"
 

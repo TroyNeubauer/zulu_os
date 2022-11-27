@@ -1,12 +1,10 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
-
 #![feature(custom_test_frameworks)]
 #![feature(alloc_error_handler)]
 #![feature(naked_functions)]
 #![feature(asm_const)]
 #![feature(abi_x86_interrupt)]
-
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -17,13 +15,13 @@ use bootloader::BootInfo;
 use core::panic::PanicInfo;
 
 pub mod allocator;
-pub mod syscall;
 pub mod elf;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
 pub mod serial;
 pub mod sys;
+pub mod syscall;
 pub mod task;
 pub mod vga_buffer;
 
