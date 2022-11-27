@@ -5,8 +5,6 @@
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     let s = "Test print";
-    unsafe { syscall::syscall_3(2, 0, 0, 0) };
-    // write (stdout, string, len)
     syscall::write(0, s.as_bytes());
 
     // exit (code 0)

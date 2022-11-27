@@ -44,9 +44,9 @@ features = ["alloc"]
 [package.metadata.bootimage]
 test-args = ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio"]
 test-success-exit-code = 33
-test-timeout = 60
-#run-command = ["qemu-system-x86_64", "-cpu", "Haswell-v1,+fsgsbase", "-drive", "format=raw,file={}", "-s", "-S"]
-run-command = ["qemu-system-x86_64", "-cpu", "Haswell-v1,+fsgsbase", "-drive", "format=raw,file={}"]
+test-timeout = 10
+run-command = ["qemu-system-x86_64", "-cpu", "Haswell-v1,+fsgsbase", "-drive", "format=raw,file={}", "-s", "-S"]
+#run-command = ["qemu-system-x86_64", "-cpu", "Haswell-v1,+fsgsbase", "-drive", "format=raw,file={}"]
 
 [[test]]
 name = "stack_overflow"

@@ -18,14 +18,16 @@ extern "sysv64" fn syscall_handler_inner(
         "SYSCALL: num: {syscall_num}, 0: 0x{arg0:X}, 1: 0x{arg1:X} , 2: 0x{arg2:X} , 3: 0x{arg3:X} , 4: 0x{arg4:X}",
     );
         let syscall_num: u8 = syscall_num.try_into().map_err(|_| Error::NoSys)?;
+        println!("made u8 syscall num ok");
         let syscall: Syscall = syscall_num.try_into().map_err(|_| Error::NoSys)?;
+        println!("parsed syscall num ok");
 
         match syscall {
             // SAFETY: If the slice can be constructed, then it means it is a user page which we do
             // not alias in the kernel. This memory may be aliased in the user program, but they
             // are paused so they cannot observe that we alias the same memory here
             Syscall::Read => unsafe {
-                with_user_slice_mut(arg1, arg2, |bytes| io::write(arg0, bytes))?
+                with_user_slice_mut(arg1, arg2, |bytes| io::read(arg0, bytes))?
             },
             Syscall::Write => with_user_slice(arg1, arg2, |bytes| io::write(arg0, bytes))?,
             Syscall::Exit => super::process::exit(arg0 as u8),
