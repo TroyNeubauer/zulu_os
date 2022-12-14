@@ -4,6 +4,8 @@ use core::arch::asm;
 use memoffset::offset_of;
 use syscall::{Error, Result, Syscall};
 
+const STRACE: bool = false;
+
 #[no_mangle]
 extern "sysv64" fn syscall_handler_inner(
     syscall_num: usize,
@@ -14,13 +16,13 @@ extern "sysv64" fn syscall_handler_inner(
     arg4: usize,
 ) -> usize {
     let inner = || -> Result<usize> {
-        println!(
-        "SYSCALL: num: {syscall_num}, 0: 0x{arg0:X}, 1: 0x{arg1:X} , 2: 0x{arg2:X} , 3: 0x{arg3:X} , 4: 0x{arg4:X}",
-    );
+        if STRACE {
+            println!(
+            "SYSCALL: num: {syscall_num}, 0: 0x{arg0:X}, 1: 0x{arg1:X} , 2: 0x{arg2:X} , 3: 0x{arg3:X} , 4: 0x{arg4:X}",
+        );
+        }
         let syscall_num: u8 = syscall_num.try_into().map_err(|_| Error::NoSys)?;
-        println!("made u8 syscall num ok");
         let syscall: Syscall = syscall_num.try_into().map_err(|_| Error::NoSys)?;
-        println!("parsed syscall num ok");
 
         match syscall {
             // SAFETY: If the slice can be constructed, then it means it is a user page which we do

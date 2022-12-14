@@ -112,14 +112,6 @@ extern "C" fn kernel_main(boot_info: &'static BootInfo, rsp: u64) -> ! {
     let top_of_stack = lowest_stack_page.start_address().as_u64() + stack_size;
 
     unsafe { enter_user_mode(bin.entry_point.as_u64(), top_of_stack) };
-
-    /*
-    bin.run();
-
-    let mut executor = Executor::new();
-    executor.spawn(Task::new(zulu_os::task::keyboard::print_keypresses()));
-    executor.run();
-    */
 }
 
 /// Sets the CPU to user mode (Ring 3) and jumps to `addr` using the stack starting at `user_stack`
