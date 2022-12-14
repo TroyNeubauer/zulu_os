@@ -52,18 +52,19 @@
 //! 1. Read. A userspace program can read one or more bytes from the keyboard.
 //! 2. Write. A userspace program can ask the kernel to print the given text by writing to the VGA buffer.
 //! 3. Exit. 
-//! 
+//!
 //! This set of syscalls, while limited, it does allow for creation of simple games and text programs running in userspace. 
 //! The current test userspace program that is run after the kernel is initialized (found inside the [userspace_test](./userspace_test/) directory)
 //! calls write to show that printing works, and then calls exit.
 //! A goal of this project is to extend the available syscalls to allow for more complex programs without compromising the security of the kernel.
+//! 
+//! A userspace syscall library is provided in [syscall](./syscall/) directory and used in [userspace_test](./userspace_test/).
 //! 
 //! 
 //! ### Kernel Memory Allocation
 //! 
 //! We use a bump allocator that is given 100KB worth of pages on kernel init. Memory is never reclaimed.
 //! We did this to keep the allocation implementation simple due to kernel memory rarely being allocated.
-//! 
 //! 
 //! ### Interrupt handling
 //! 
@@ -77,6 +78,13 @@
 //! Execution occurs until the userspace program either crashes the kernel or invokes the exit syscall.
 //! Because only running a single process is currently supported, the kernel enters a wait-for-interrupt loop to save power until the CPU it is reset.
 //! This will be expanded upon in the future to context switch to another process
+//!
+//! ### Testing
+//!
+//! Like any other complex project, testing is essential to ensuring functionality while preventing
+//! regressions. Qemu is used to execute the integration tests inside [kernel/tests](./kernel/tests)
+//! in the same context thet we run the OS in, as well as isolated from one another
+//!
 
 extern crate alloc;
 
