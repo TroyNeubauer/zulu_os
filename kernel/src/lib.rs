@@ -88,7 +88,7 @@
 
 extern crate alloc;
 
-use bootloader::BootInfo;
+use bootloader_api::BootInfo;
 use core::panic::PanicInfo;
 
 pub mod allocator;
