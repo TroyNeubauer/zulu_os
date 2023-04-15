@@ -1,6 +1,7 @@
 use std::{io::Write, process::Command};
 
 fn main() {
+    /*
     println!("cargo:rerun-if-changed=../userspace_test/");
     std::env::set_var("REBUILD", format!("{:?}", std::time::Instant::now()));
     println!("cargo:rerun-if-env-changed=REBUILD");
@@ -18,7 +19,10 @@ fn main() {
         let _ = std::io::stderr().write(&output.stdout).unwrap();
         let _ = std::io::stderr().write(&output.stderr).unwrap();
         println!("cargo:rerun-if-changed=../userspace_test/");
-        panic!("Failed to compile userspace test");
+        panic!(
+            "Failed to compile userspace test: {:?}",
+            String::from_utf8(output.stderr)
+        );
     }
 
     #[cfg(debug_assertions)]
@@ -33,4 +37,5 @@ fn main() {
         .current_dir("../userspace_test/")
         .output()
         .expect("failed to execute process");
+    */
 }

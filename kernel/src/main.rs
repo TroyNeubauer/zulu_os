@@ -10,7 +10,7 @@
 extern crate alloc;
 
 use {
-    bootloader::BootInfo,
+    bootloader_api::BootInfo,
     core::{arch::asm, num::NonZeroU64, panic::PanicInfo},
     x86_64::{
         registers::rflags::RFlags,
@@ -46,9 +46,15 @@ struct Align4096;
 
 static CHILD_PROCESS: &[u8] = include_bytes_align_as!(Align4096, "../processes/userspace_test");
 
-#[no_mangle]
+const CONFIG: bootloader_api::BootloaderConfig = {
+    let mut config = bootloader_api::BootloaderConfig::new_default();
+    config.kernel_stack_size = 100 * 1024; // 100 KiB
+    config
+};
+bootloader_api::entry_point!(kernel_init, config = &CONFIG);
+
 #[naked]
-pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
+pub fn kernel_init(boot_info: &'static mut BootInfo) -> ! {
     unsafe {
         asm!(
             // Set second argument to the current rsp so we have access to it
@@ -61,16 +67,23 @@ pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
 }
 
 #[no_mangle]
-extern "C" fn kernel_main(boot_info: &'static BootInfo, rsp: u64) -> ! {
+extern "C" fn kernel_main(boot_info: &'static mut BootInfo, rsp: u64) -> ! {
+    let boot_info: &'static _ = boot_info;
     zulu_os::init(boot_info);
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    let phys_mem_offset = VirtAddr::new(
+        boot_info
+            .physical_memory_offset
+            .into_option()
+            .expect("Offset memory mapping required"),
+    );
     // SAFETY:
     // 1. interrupts are disabled as they off by default, and havent been enabled yet
     // 2. The bootloader has mapped all of physical memory at `physical_memory_offset`
     let mut frame_allocator = unsafe { memory::init(phys_mem_offset) }.with(|mapper| {
         // setup heap while we have mapper
-        let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+        let mut frame_allocator =
+            unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
 
         unsafe { zulu_os::allocator::init_kernel_heap(mapper, &mut frame_allocator) }
             .expect("Failed to init heap");
