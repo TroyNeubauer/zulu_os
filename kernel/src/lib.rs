@@ -100,7 +100,7 @@ pub mod serial;
 pub mod sys;
 pub mod syscall;
 pub mod task;
-pub mod vga_buffer;
+pub mod frame_buffer;
 
 pub fn init(_boot_info: &'static BootInfo) {
     gdt::gdt_init();

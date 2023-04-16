@@ -10,14 +10,19 @@
 extern crate alloc;
 
 use {
-    bootloader_api::BootInfo,
-    core::{arch::asm, num::NonZeroU64, panic::PanicInfo},
+    bootloader_api::{info::Optional, BootInfo, BootloaderConfig},
+    core::{arch::asm, mem, num::NonZeroU64, panic::PanicInfo, ptr::NonNull},
     x86_64::{
         registers::rflags::RFlags,
-        structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags},
+        structures::paging::{
+            FrameAllocator, Mapper, OffsetPageTable, Page, PageTableFlags, Size4KiB,
+        },
         VirtAddr,
     },
-    zulu_os::{memory, memory::BootInfoFrameAllocator, syscall},
+    zulu_os::{
+        memory::{self, BootInfoFrameAllocator},
+        syscall,
+    },
 };
 
 #[repr(C)] // guarantee 'bytes' comes after '_align'
@@ -46,9 +51,18 @@ struct Align4096;
 
 static CHILD_PROCESS: &[u8] = include_bytes_align_as!(Align4096, "../processes/userspace_test");
 
-#[no_mangle]
+const CONFIG: bootloader_api::BootloaderConfig = {
+    let mut config = bootloader_api::BootloaderConfig::new_default();
+    config.kernel_stack_size = 100 * 1024;
+    config
+};
+
+#[link_section = ".bootloader-config"]
+pub static __BOOTLOADER_CONFIG: [u8; BootloaderConfig::SERIALIZED_LEN] = CONFIG.serialize();
+
 #[naked]
-pub extern "C" fn _start(boot_info: &'static mut BootInfo) -> ! {
+#[export_name = "_start"]
+pub extern "C" fn start(boot_info: &'static mut BootInfo) -> ! {
     unsafe {
         asm!(
             // Set second argument to the current rsp so we have access to it
@@ -60,10 +74,76 @@ pub extern "C" fn _start(boot_info: &'static mut BootInfo) -> ! {
     }
 }
 
+#[derive(Clone)]
+struct Handler {
+    frame_allocator: *mut BootInfoFrameAllocator,
+    mapper: *mut OffsetPageTable<'static>,
+    phys_mem_offset: VirtAddr,
+}
+
+impl acpi::AcpiHandler for Handler {
+    unsafe fn map_physical_region<T>(
+        &self,
+        phys_addr: usize,
+        size: usize,
+    ) -> acpi::PhysicalMapping<Self, T> {
+        let virt_start = self.phys_mem_offset + phys_addr;
+        let start = Page::containing_address(virt_start);
+        let end = Page::containing_address(virt_start + size);
+        let pages = Page::range(start, end);
+        let mapped_length = ((end + 1).start_address() - start.start_address()) as usize;
+
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+
+        let frame_allocator = unsafe { &mut *self.frame_allocator };
+        let mapper = unsafe { &mut *self.mapper };
+        // SAFETY: 1. Interrupts are disabled 2. `memory::init` has been called 3. No recursion
+        for page in pages {
+            let frame = frame_allocator.allocate_frame().unwrap();
+            unsafe {
+                mapper
+                    .map_to(page, frame, flags, frame_allocator)
+                    .unwrap()
+                    .flush();
+            };
+        }
+
+        unsafe {
+            acpi::PhysicalMapping::new(
+                phys_addr,
+                NonNull::new(virt_start.as_mut_ptr()).unwrap(),
+                size,
+                mapped_length,
+                self.clone(),
+            )
+        }
+    }
+
+    fn unmap_physical_region<T>(mapping: &acpi::PhysicalMapping<Self, T>) {
+        let mapper = unsafe { &mut *mapping.handler().mapper };
+
+        let virt_start = VirtAddr::new(mapping.virtual_start().as_ptr() as u64);
+        let start = Page::<Size4KiB>::containing_address(virt_start);
+        let end = Page::<Size4KiB>::containing_address(virt_start + mapping.mapped_length());
+        let pages = Page::range(start, end);
+
+        // SAFETY: 1. Interrupts are disabled 2. `memory::init` has been called 3. No recursion
+        for page in pages {
+            let (_frame, flush) = mapper.unmap(page).unwrap();
+            flush.flush();
+        }
+        todo!()
+    }
+}
+
 #[no_mangle]
 extern "C" fn kernel_main(boot_info: &'static mut BootInfo, rsp: u64) -> ! {
+    let fb = mem::replace(&mut boot_info.framebuffer, Optional::None)
+        .into_option()
+        .unwrap();
+
     let boot_info: &'static _ = boot_info;
-    zulu_os::init(boot_info);
+    zulu_os::frame_buffer::init(fb);
 
     let phys_mem_offset = VirtAddr::new(
         boot_info
@@ -71,17 +151,45 @@ extern "C" fn kernel_main(boot_info: &'static mut BootInfo, rsp: u64) -> ! {
             .into_option()
             .expect("Physical memory offset required"),
     );
+
     // SAFETY:
     // 1. interrupts are disabled as they off by default, and havent been enabled yet
     // 2. The bootloader has mapped all of physical memory at `physical_memory_offset`
     let mut frame_allocator = unsafe { memory::init(phys_mem_offset) }.with(|mapper| {
         // setup heap while we have mapper
-        let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
+        let mut frame_allocator =
+            unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
 
         unsafe { zulu_os::allocator::init_kernel_heap(mapper, &mut frame_allocator) }
             .expect("Failed to init heap");
+
+        let handler = Handler {
+            frame_allocator: &mut frame_allocator as *mut _,
+            mapper: mapper as *mut _,
+            phys_mem_offset,
+        };
+        let a = unsafe {
+            acpi::AcpiTables::from_rsdp(
+                handler,
+                boot_info.rsdp_addr.into_option().expect("rsdp mut be set") as usize,
+            )
+        };
+
+        let info = a.unwrap().platform_info().unwrap();
+        zulu_os::println!(
+            "RSDP: {:?}, {:?}, {:?}, {:?}",
+            info.power_profile,
+            info.interrupt_model,
+            info.processor_info.as_ref().unwrap().boot_processor,
+            info.processor_info
+                .as_ref()
+                .map(|p| &p.application_processors),
+        );
+
         frame_allocator
     });
+
+    zulu_os::init(boot_info);
 
     syscall::init_thread_data(syscall::ThreadData {
         kernel_rsp: NonZeroU64::new(rsp),
@@ -120,8 +228,8 @@ extern "C" fn kernel_main(boot_info: &'static mut BootInfo, rsp: u64) -> ! {
     unsafe { enter_user_mode(bin.entry_point.as_u64(), top_of_stack) };
 }
 
-/// Sets the CPU to user mode (Ring 3) and jumps to `addr` using the stack starting at `user_stack`
-/// Also enables interrupts
+/// Sets the CPU to user mode (Ring 3), enables interrupts, and jumps to `addr` using the stack
+/// starting at `user_stack`
 #[no_mangle]
 #[naked]
 pub unsafe extern "sysv64" fn enter_user_mode(addr: u64, user_stack: u64) -> ! {

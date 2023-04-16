@@ -19,6 +19,8 @@ num_enum = { version = "0.5.7", default-features = false }
 raw-cpuid = "10.6.0"
 memoffset = { version = "0.7.1", features = ["unstable_const"] }
 syscall = { path = "../syscall/" }
+acpi = "4.1.1"
+noto-sans-mono-bitmap = "0.2.0"
 
 [dependencies.object]
 version = "0.29.0"

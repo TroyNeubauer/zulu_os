@@ -1,9 +1,13 @@
 use core::mem::MaybeUninit;
 
-use bootloader_api::info::{MemoryRegionKind, MemoryRegions};
-use x86_64::{
-    structures::paging::{FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB},
-    PhysAddr, VirtAddr,
+use {
+    bootloader_api::info::{MemoryRegionKind, MemoryRegions},
+    x86_64::{
+        structures::paging::{
+            FrameAllocator, FrameDeallocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB,
+        },
+        PhysAddr, VirtAddr,
+    },
 };
 
 /// Initialize a new OffsetPageTable, and calls `f` with the new page mapper.
@@ -70,6 +74,7 @@ impl<'g> MapperGuard<'g> {
 pub struct BootInfoFrameAllocator {
     regions: &'static MemoryRegions,
     next: usize,
+    last_phys_addr: PhysAddr,
 }
 
 impl BootInfoFrameAllocator {
@@ -79,7 +84,11 @@ impl BootInfoFrameAllocator {
     /// The caller must guarantee that the passed memory map is valid.
     /// The main requirement is that all frames that are marked as `USABLE` in it are really unused
     pub unsafe fn init(regions: &'static MemoryRegions) -> Self {
-        BootInfoFrameAllocator { regions, next: 0 }
+        BootInfoFrameAllocator {
+            regions,
+            next: 0,
+            last_phys_addr: PhysAddr::new(0),
+        }
     }
 
     /// Returns an iterator over the usable frames specified in the memory map.
@@ -99,7 +108,19 @@ impl BootInfoFrameAllocator {
 unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
     fn allocate_frame(&mut self) -> Option<PhysFrame> {
         let frame = self.usable_frames().nth(self.next);
-        self.next += 1;
-        frame
+        frame.map(|f| {
+            self.last_phys_addr = f.start_address();
+            self.next += 1;
+            f
+        })
+    }
+}
+
+impl FrameDeallocator<Size4KiB> for BootInfoFrameAllocator {
+    unsafe fn deallocate_frame(&mut self, frame: PhysFrame<Size4KiB>) {
+        if frame.start_address() == self.last_phys_addr {
+            // safe to delete last frame
+            self.next -= 1;
+        }
     }
 }

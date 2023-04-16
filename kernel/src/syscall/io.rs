@@ -4,7 +4,7 @@ use crate::println;
 
 pub fn write(_fd: usize, bytes: &[u8]) -> Result<usize> {
     println!("write");
-    crate::vga_buffer::print_bytes(bytes);
+    crate::frame_buffer::print_bytes(bytes);
     Ok(bytes.len())
 }
 

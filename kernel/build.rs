@@ -1,7 +1,6 @@
-//use std::{io::Write, process::Command};
+use std::{io::Write, process::Command};
 
 fn main() {
-    /*
     println!("cargo:rerun-if-changed=../userspace_test/");
     std::env::set_var("REBUILD", format!("{:?}", std::time::Instant::now()));
     println!("cargo:rerun-if-env-changed=REBUILD");
@@ -28,11 +27,10 @@ fn main() {
     let profile = "release";
     Command::new("cp")
         .args([
-            format!("target/x86_64/{profile}/userspace_test"),
+            format!("target/x86_64-unknown-none/{profile}/userspace_test"),
             "../kernel/processes/".to_string(),
         ])
         .current_dir("../userspace_test/")
         .output()
         .expect("failed to execute process");
-    */
 }
