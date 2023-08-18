@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    "kernel",
+    "os",
+    "userspace_test",
+]
+
+[profile.release]
+debug = true

@@ -1,0 +1,9 @@
+[package]
+name = "os"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+zulu_os = { path = "../kernel", artifact = "bin", target = "x86_64-unknown-none" }
+ovmf-prebuilt = "0.1.0-alpha.1"
+

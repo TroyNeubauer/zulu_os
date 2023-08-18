@@ -34,7 +34,7 @@ pub unsafe fn init<'g>(physical_memory_offset: VirtAddr) -> MapperGuard<'g> {
     MapperGuard { inner: mapper }
 }
 
-// TODO: make thread local
+// TODO: make thread local for multithreading
 static mut MAPPER: MaybeUninit<OffsetPageTable> = MaybeUninit::uninit();
 
 /// Gets a mutable reference to this therad's page mapper
